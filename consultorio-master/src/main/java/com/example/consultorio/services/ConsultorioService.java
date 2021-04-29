@@ -6,6 +6,7 @@ import com.example.consultorio.dto.PacienteDTO;
 import com.example.consultorio.dto.ReservaDTO;
 import com.example.consultorio.dto.ResponseDTO;
 
+import java.text.ParseException;
 import java.util.List;
 
 public interface ConsultorioService {
@@ -19,6 +20,8 @@ public interface ConsultorioService {
     public List<PacienteDTO> verPacientes();
 
     public List<DentistaDTO> verDentistas();
+
+    public List<PacienteDTO> listarPacientesPorDia(String dia) throws ParseException;
 
 
 }

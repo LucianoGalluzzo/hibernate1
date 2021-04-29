@@ -8,11 +8,15 @@ import com.example.consultorio.entity.Agenda;
 import com.example.consultorio.entity.Dentista;
 import com.example.consultorio.entity.Paciente;
 import com.example.consultorio.entity.Turno;
+import com.example.consultorio.repositories.AgendaInterface;
 import com.example.consultorio.repositories.DentistaInterface;
 import com.example.consultorio.repositories.PacienteInterface;
 import com.example.consultorio.repositories.TurnoInterface;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,11 +26,13 @@ public class ConsultorioServiceImpl implements ConsultorioService{
     public final DentistaInterface dentistaRepository;
     public final PacienteInterface pacienteRepository;
     public final TurnoInterface turnoRepository;
+    public final AgendaInterface agendaRepository;
 
-    public ConsultorioServiceImpl(DentistaInterface dentistaRepository, PacienteInterface pacienteRepository, TurnoInterface turnoRepository) {
+    public ConsultorioServiceImpl(DentistaInterface dentistaRepository, PacienteInterface pacienteRepository, TurnoInterface turnoRepository, AgendaInterface agendaRepository) {
         this.dentistaRepository = dentistaRepository;
         this.pacienteRepository = pacienteRepository;
         this.turnoRepository = turnoRepository;
+        this.agendaRepository = agendaRepository;
     }
 
 
@@ -45,7 +51,7 @@ public class ConsultorioServiceImpl implements ConsultorioService{
     @Override
     public ResponseDTO reservar(ReservaDTO reserva) {
         Dentista dentista = dentistaRepository.findById(reserva.getId_dentista()).orElse(null);
-
+        Turno turnoNuevo = new Turno();
         if (dentista == null){
             throw new RuntimeException("No existe dentista");
         }
@@ -68,20 +74,18 @@ public class ConsultorioServiceImpl implements ConsultorioService{
             throw new RuntimeException("No existe Agenda");
 
         Turno turno = agenda.getTurnos().stream().filter(
-                t -> t.getStart_time().getHour() == reserva.getHora()
-                        && t.getStart_time().getMinute() == reserva.getMinutos()
+                t -> t.getStart_time().equals(reserva.getStart_time())
         ).findFirst().orElse(null);
 
-        if(turno == null)
-            throw new RuntimeException("No existe turno");
-
-        if (turno.isStatus()){
+        if(turno == null || turno.getStatus().equals("Reprogramado") || turno.getStatus().equals("Cancelado")){
+            turnoNuevo = new Turno(reserva);
+            turnoNuevo.setAgenda(agenda);
+            turnoNuevo.setPaciente(nuevo);
+        }else{
             throw new RuntimeException("Turno ocupado");
         }
 
-        turno.setPaciente(nuevo);
-        turno.setStatus(true);
-        turnoRepository.save(turno);
+        turnoRepository.save(turnoNuevo);
 
         return new ResponseDTO(200, String.format
                 ("La reserva se genero para el paciente %s %s", nuevo.getName(), nuevo.getLast_name()));
@@ -107,5 +111,24 @@ public class ConsultorioServiceImpl implements ConsultorioService{
         }
 
         return listaDentistas;
+    }
+
+    @Override
+    public List<PacienteDTO> listarPacientesPorDia(String dia) throws ParseException {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        //convert String to LocalDate
+        LocalDate localDate = LocalDate.parse(dia, formatter);
+
+        List<Agenda> agendas = agendaRepository.findByDate(localDate);
+
+        List<Turno> turnos = null;
+        List<PacienteDTO> pacientes = new ArrayList<>();
+        for(Agenda a:agendas){
+            for(Turno t:a.getTurnos()){
+                pacientes.add(new PacienteDTO(t.getPaciente()));
+            }
+        }
+
+        return pacientes;
     }
 }

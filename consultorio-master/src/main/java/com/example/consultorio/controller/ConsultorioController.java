@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.util.List;
 
 @RestController
@@ -21,7 +22,6 @@ public class ConsultorioController {
     public ConsultorioController(ConsultorioService consultorioService) {
         this.consultorioService = consultorioService;
     }
-
 
     @PostMapping("/reserva")
     public ResponseDTO reservar(@RequestBody ReservaDTO reserva){
@@ -49,5 +49,10 @@ public class ConsultorioController {
     @GetMapping("/verDentistas")
     public ResponseEntity<List<DentistaDTO>> verDentistas(){
         return new ResponseEntity<>(consultorioService.verDentistas(), HttpStatus.OK);
+    }
+
+    @GetMapping("/listarPacientes")
+    public ResponseEntity<List<PacienteDTO>> listarPacientesPorDia(@RequestParam(required = true) String dia) throws ParseException {
+        return new ResponseEntity<>(consultorioService.listarPacientesPorDia(dia), HttpStatus.OK);
     }
 }
